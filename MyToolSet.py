@@ -229,24 +229,17 @@ def missing_values_table(df):
               " columns that have missing values.")
         return mis_val_table_ren_columns
 
-def under_sample(df,target):
-    
-    tl = TomekLinks(return_indices=True, ratio='majority')
-    X_tl, y_tl, id_tl = tl.fit(df[df.columns.difference([target])],df[target])
 
-    print('Removed indexes:', id_tl)
-    df1 = pd.DataFrame(X_tl)
-    df1[target]=y_tl
-    df1.head(10)
-    return df1
 
-def over_sample(df,target):
-    smt = SMOTETomek()
-    columns=[col for col in df.columns if col not in target]
+def BalancedSample(df,target):
+    from imblearn.combine import SMOTEENN
     
-    X_smt, y_smt = smt.fit(df[columns],df[target])
+    columns=df.columns.difference([target])
+    print('the data originally has a shape, ',df[target].value_counts())
+    X_smt, y_smt = SMOTEENN().fit_sample(df[columns],df[target])
     X_smt=pd.DataFrame(X_smt, columns=columns)
     X_smt[target]=y_smt
+    print('the data now has a shape, ',X_smt[target].value_counts())
     
 
     return(X_smt)
