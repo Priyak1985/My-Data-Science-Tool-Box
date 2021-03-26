@@ -1,0 +1,16 @@
+ipywidgets==7.5.1
+factor_analyzer==0.3.2
+imbalanced_learn==0.8.0
+bokeh==2.1.1
+numpy==1.18.5
+pandas==1.0.5
+seaborn==0.10.1
+~~ipy==1.5.0
+matplotlib==3.2.2
+statsmodels==0.11.1
+apyori==1.1.2
+imblearn==0.0
+lightgbm==3.2.0
+mlxtend==0.18.0
+scikit_learn==0.24.1
+scipy==1.6.2
