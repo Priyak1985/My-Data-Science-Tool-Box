@@ -232,16 +232,17 @@ def missing_values_table(df):
 
 
     def BalancedSample(df,target,choice=1):
-    from imblearn.combine import SMOTETomek
-    from imblearn.combine import SMOTEENN
-    
-    columns=df.columns.difference([target])
-    print('\nthe data originally has a shape--------->\n',df[target].value_counts())
-    model=SMOTETomek() if choice==1 else SMOTEENN()
-    X_smt, y_smt = model.fit_sample(df[columns],df[target])
-    X_smt=pd.DataFrame(X_smt, columns=columns)
-    X_smt[target]=y_smt
-    print('\nthe data now has a shape------->\n',X_smt[target].value_counts())
+        
+        from imblearn.combine import SMOTETomek
+        from imblearn.combine import SMOTEENN
+
+        columns=df.columns.difference([target])
+        print('\nthe data originally has a shape--------->\n',df[target].value_counts())
+        model=SMOTETomek() if choice==1 else SMOTEENN()
+        X_smt, y_smt = model.fit_sample(df[columns],df[target])
+        X_smt=pd.DataFrame(X_smt, columns=columns)
+        X_smt[target]=y_smt
+        print('\nthe data now has a shape------->\n',X_smt[target].value_counts())
     
 
     return(X_smt)
