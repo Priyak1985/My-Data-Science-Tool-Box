@@ -229,9 +229,7 @@ def missing_values_table(df):
               " columns that have missing values.")
         return mis_val_table_ren_columns
 
-
-
-    def BalancedSample(df,target,choice=1):
+def BalancedSample(df,target,choice=1):
         
         from imblearn.combine import SMOTETomek
         from imblearn.combine import SMOTEENN
@@ -245,7 +243,10 @@ def missing_values_table(df):
         print('\nthe data now has a shape------->\n',X_smt[target].value_counts())
     
 
-    return(X_smt)
+        return(X_smt)
+
+
+    
 
 def My_PrincipalComponentAnalysis(df,num=None):
     print('\n Principal Component Analysis Triggered')
