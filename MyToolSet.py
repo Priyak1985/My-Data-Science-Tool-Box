@@ -569,26 +569,62 @@ import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_samples,silhouette_score
 
-def my_KMeans(data,n=5):
+def my_KMeans(data,n=5,feature_selection=False,fitness_test=False):
         from sklearn.cluster import KMeans
-        from sklearn.metrics import silhouette_score
-        from sklearn.preprocessing import MinMaxScaler
+        from sklearn.metrics import silhouette_score,silhouette_samples
+        from sklearn.preprocessing import StandardScaler
+        from sklearn.metrics import davies_bouldin_score
+        
         df=data.select_dtypes(include=np.number)
+         
+        # 1a)Kmeans: Apply scaling on the feautures usded for clustring. Standard Scaler is used.
+        
         mean_values= np.round(df.mean(axis=0))
         sd_values=np.round(df.std(axis=0))
-       
         flag1=1 if (mean_values.max()==0) & (sd_values.min()==1) else 0
-        flag2=1 if (df.max(axis=0).max()==1) & (df.min(axis=0).min()==0) else 0
+        flag2=1 if (sd_values.max(axis=0)==1) & (sd_values.min(axis=0)==0) else 0
+             
         if flag1 + flag2==0:
             
             
-            scaler = MinMaxScaler()
-            print('Data is not scaled. Applying MinMax Scaling.')
+            scaler = StandardScaler()
+            print('Data is not scaled. Applying Standard Scaling.')
             df=pd.DataFrame(scaler.fit_transform(df), columns=df.columns)
-          
+            print("\nvalidate mean--")
+            print(df.mean(axis=0))
+            print('\nvalidate standard deviation-')
+            print(df.std(axis=0))
+            
+
+        K = range(2,n+1)
         Sum_of_squared_distances = []
         sil=[]
-        K = range(2,n+1)
+        list_sl=[]
+        val=0
+        #1b)KMeans: Decide on the best features for Kmeans Clustering
+        if feature_selection==True:
+                list_bestfeatures_pwc=list()
+                for feature in df.columns:
+                    
+                    dframe_bestfeatures_pwc=pd.DataFrame()
+                    for k in K:
+                        
+                        km = KMeans(n_clusters=k)
+                        y_predict= km.fit_predict(pd.DataFrame(df[feature]))
+                        silhouette_vals = silhouette_samples(df,y_predict)
+                        avg_sil_score=np.mean(silhouette_vals)
+                        list_bestfeatures_pwc.append([feature,k,avg_sil_score])
+                
+                dframe_bestfeatures_pwc=pd.DataFrame(list_bestfeatures_pwc,columns=['FeatureName','Clusters Applied','SilhouetteScore'])
+                print('\n------------ Feature Selection Results| Avg. Silhoutte Score -------\n')
+                print(pd.pivot_table(dframe_bestfeatures_pwc,index=['FeatureName'],columns=['Clusters Applied'],values='SilhouetteScore'))
+
+                     
+                            
+        
+            
+                      
+        # 1c)Kmeans: Iterate through different potential values of K to detemine best K by elbow plot visual inspection
         for k in K:
             km = KMeans(n_clusters=k)
             km = km.fit(df)
@@ -608,7 +644,51 @@ def my_KMeans(data,n=5):
         plt.show()
 
         y_predict= KMeans(n_clusters=n).fit_predict(df)
-        return y_predict
+        
+        # 1d) Kmeans: Fitness test.Optional step of plotting Sillehoute score of each individual sample to inspect quality of cluster formations
+        
+        if fitness_test==True:
+            
+            centroids  = km.cluster_centers_
+            # get silhouette
+            silhouette_vals = silhouette_samples(df,y_predict)
+            # silhouette plot
+            y_ticks = []
+            y_lower = y_upper = 0
+            
+            print('\n-- Davies_bouldin_score ( closer to zero the better )------> ')
+            print(davies_bouldin_score(df,y_predict))
+
+            # Iterate through each cluster.Obtain scores for each sample under a given Cluster.
+            
+            for i,cluster in enumerate(np.unique(y_predict)):
+                
+                cluster_silhouette_vals = silhouette_vals[y_predict ==cluster]
+                cluster_silhouette_vals.sort()
+                y_upper += len(cluster_silhouette_vals)
+
+                plt.barh(range(y_lower,y_upper), cluster_silhouette_vals,height =1);
+                plt.text(-0.03,(y_lower+y_upper)/2,str(i+1))
+                y_lower += len(cluster_silhouette_vals)
+
+               # Get the average silhouette score 
+                avg_score = np.mean(cluster_silhouette_vals)
+                list_sl.append(avg_score)
+                plt.axvline(avg_score,linestyle ='--',linewidth =2,color = 'green')
+                plt.yticks([])
+                plt.xlim([-0.1, 1])
+                plt.xlabel('Silhouette coefficient values')
+                plt.ylabel('Cluster labels')
+                
+                plt.title('Goodness of fit with frozen value of K')
+                plt.show()
+
+                
+        if len(list_sl) >0:
+                  print('\n Overall goodnes of fit  for the cluster',np.round(100*min(list_sl)))
+                  print('******************************************')
+                  val=np.round(100*np.mean(list_sl))
+        return pd.Series(y_predict),val
    
 
         
