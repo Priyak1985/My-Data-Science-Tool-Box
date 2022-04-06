@@ -4,17 +4,9 @@ import numpy as np
 import pandas.core.algorithms as algos
 from pandas import Series
 import scipy.stats.stats as stats
-from sklearn.ensemble import RandomForestClassifier
-from statsmodels.stats.outliers_influence import variance_inflation_factor
-from sklearn.metrics import accuracy_score
-from sklearn.svm import LinearSVC
-from sklearn.feature_selection import SelectFromModel
-from functools import reduce
 import re
 import traceback
 import string
-from sklearn.ensemble import ExtraTreesClassifier
-from functools import reduce
 
 max_bin = 20
 force_bin = 3
@@ -65,11 +57,11 @@ def mono_bin(Y, X, n = max_bin):
     d3["DIST_EVENT"] = d3.EVENT/d3.sum().EVENT
     d3["DIST_NON_EVENT"] = d3.NONEVENT/d3.sum().NONEVENT
     d3["WOE"] = np.log(d3.DIST_EVENT/d3.DIST_NON_EVENT)
-    d3["iv"] = (d3.DIST_EVENT-d3.DIST_NON_EVENT)*np.log(d3.DIST_EVENT/d3.DIST_NON_EVENT)
+    d3["IV"] = (d3.DIST_EVENT-d3.DIST_NON_EVENT)*np.log(d3.DIST_EVENT/d3.DIST_NON_EVENT)
     d3["VAR_NAME"] = "VAR"
-    d3 = d3[['VAR_NAME','MIN_VALUE', 'MAX_VALUE', 'COUNT', 'EVENT', 'EVENT_RATE', 'NONEVENT', 'NON_EVENT_RATE', 'DIST_EVENT','DIST_NON_EVENT','WOE', 'iv']]       
+    d3 = d3[['VAR_NAME','MIN_VALUE', 'MAX_VALUE', 'COUNT', 'EVENT', 'EVENT_RATE', 'NONEVENT', 'NON_EVENT_RATE', 'DIST_EVENT','DIST_NON_EVENT','WOE', 'IV']]       
     d3 = d3.replace([np.inf, -np.inf], 0)
-    d3.iv = d3.iv.sum()
+    d3.IV = d3.IV.sum()
     
     return(d3)
 
@@ -100,16 +92,16 @@ def char_bin(Y, X):
     d3["DIST_EVENT"] = d3.EVENT/d3.sum().EVENT
     d3["DIST_NON_EVENT"] = d3.NONEVENT/d3.sum().NONEVENT
     d3["WOE"] = np.log(d3.DIST_EVENT/d3.DIST_NON_EVENT)
-    d3["iv"] = (d3.DIST_EVENT-d3.DIST_NON_EVENT)*np.log(d3.DIST_EVENT/d3.DIST_NON_EVENT)
+    d3["IV"] = (d3.DIST_EVENT-d3.DIST_NON_EVENT)*np.log(d3.DIST_EVENT/d3.DIST_NON_EVENT)
     d3["VAR_NAME"] = "VAR"
-    d3 = d3[['VAR_NAME','MIN_VALUE', 'MAX_VALUE', 'COUNT', 'EVENT', 'EVENT_RATE', 'NONEVENT', 'NON_EVENT_RATE', 'DIST_EVENT','DIST_NON_EVENT','WOE', 'iv']]      
+    d3 = d3[['VAR_NAME','MIN_VALUE', 'MAX_VALUE', 'COUNT', 'EVENT', 'EVENT_RATE', 'NONEVENT', 'NON_EVENT_RATE', 'DIST_EVENT','DIST_NON_EVENT','WOE', 'IV']]      
     d3 = d3.replace([np.inf, -np.inf], 0)
-    d3.iv = d3.iv.sum()
+    d3.IV = d3.IV.sum()
     d3 = d3.reset_index(drop=True)
     
     return(d3)
-# This is the main function which must be called in the format final_iv, iv = data_vars(df,df.target)
-def MyFeatureImportance(df1, target):
+
+def data_vars(df1, target):
     
     stack = traceback.extract_stack()
     filename, lineno, function_name, code = stack[-2]
@@ -118,8 +110,6 @@ def MyFeatureImportance(df1, target):
     
     x = df1.dtypes.index
     count = -1
-    print('\n Calculating feature importance by information value .\n')
-    print('\n This function returns a tuple of two data frames\n')
     
     for i in x:
         if i.upper() not in (final.upper()):
@@ -137,74 +127,6 @@ def MyFeatureImportance(df1, target):
             else:
                 iv_df = iv_df.append(conv,ignore_index=True)
     
-    iv = pd.DataFrame({'iv':iv_df.groupby('VAR_NAME').iv.max()})
+    iv = pd.DataFrame({'IV':iv_df.groupby('VAR_NAME').IV.max()})
     iv = iv.reset_index()
-    
-    return(iv_df,iv.sort_values(['iv'],ascending=0))
-
-
-
-
-def Random_forest_classifier(df,string_target):
-    df = df.reset_index()
-    clf = RandomForestClassifier()
-    features = df[df.columns.difference([string_target])]
-    labels = df[string_target]
-
-    clf.fit(features,labels)
-
-    preds = clf.predict(features)
-
-    
-    accuracy = accuracy_score(preds,labels)
-    print(accuracy)
-    VI = pd.DataFrame(clf.feature_importances_, columns = ["RF"], index=features.columns)
-    
-    VI = VI.reset_index()
-    VI=VI.sort_values(['RF'],ascending=0)
-    return(VI)
-
-def Extratrees (df,string_target):
-   
-    model = ExtraTreesClassifier()
-    features = df[df.columns.difference([string_target])]
-    labels = df[string_target]
-    features = features.fillna(0)
-    model.fit(features, labels)
-    FI = pd.DataFrame(model.feature_importances_, columns = ["Extratrees"], index=features.columns)
-    FI = FI.reset_index()
-    return(FI.sort_values(['Extratrees'],ascending=0))
-
-def vote_importance(IV, VI, l1):
-    
-    dfs = [IV, VI,l1]
-    final_results = reduce(lambda left,right: pd.merge(left,right,on='index'), dfs)
-    columns = ['iv', 'RF', 'Extratrees']
-    score_table = pd.DataFrame({},[])
-    score_table['index'] = final_results['index']
-    for i in columns:
-        score_table[i] = final_results['index'].isin(list(final_results.nlargest(5,i)['index'])).astype(int)
-        
-    
-    score_table['final_score'] = score_table.sum(axis=1)
-    
-    return(score_table.sort_values('final_score',ascending=0))
-   
-
-def calculate_vif(features):
-    vif = pd.DataFrame()
-    vif["Features"] = features.columns
-    vif["VIF"] = [variance_inflation_factor(features.values, i) for i in range(features.shape[1])]    
-    return(vif)
-
-
-
-
-
-
-
-        
-            
-
-
-
+    return(iv_df,iv) 
